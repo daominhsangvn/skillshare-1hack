@@ -24,11 +24,11 @@ class Skillshare(object):
             return False
 
     def download_course_by_url(self, url):
-        m = re.match('https://www.skillshare.com/classes/.*?/(\\d+)', url)
+        m = re.match('https://www.skillshare.com/classes/(.*?)/(\\d+)', url)
         assert m, 'Failed to parse class ID from URL'
-        self.download_course_by_class_id(m.group(1))
+        self.download_course_by_class_id(m.group(2), m.group(1))
 
-    def download_course_by_class_id(self, class_id):
+    def download_course_by_class_id(self, class_id, class_name):
         data = self.fetch_course_data_by_class_id(class_id=class_id)
         teacher_name = None
         if 'vanity_username' in data['_embedded']['teacher']:
@@ -39,9 +39,12 @@ class Skillshare(object):
         if self.is_unicode_string(teacher_name):
             teacher_name = teacher_name.encode('ascii', 'replace')
         title = data['title']
-        if self.is_unicode_string(title):
-            title = title.encode('ascii', 'replace')
-        base_path = os.path.abspath(os.path.join(self.download_path, slugify(teacher_name), slugify(title))).rstrip('/')
+        title = title.replace(":", "_")
+        #print(title)
+        #if self.is_unicode_string(title):
+        #    title = title.encode('ascii', 'replace')
+        #print(title)
+        base_path = os.path.abspath(os.path.join(self.download_path, title)).rstrip('/')
         if not os.path.exists(base_path):
             os.makedirs(base_path)
         for u in data['_embedded']['units']['_embedded']['units']:
@@ -78,7 +81,7 @@ class Skillshare(object):
          'User-Agent':'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
          'Origin':'https://www.skillshare.com'})
         assert not meta_res.status_code != 200, 'Failed to fetch video meta'
-        
+
         # Video DL
         for x in meta_res.json()['sources']:
             if 'container' in x:
