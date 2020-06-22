@@ -1,11 +1,9 @@
-import sys
-import os
+import sys, os
 from skillshare import Skillshare
 from magic import cookie
 
 # or by class ID:
 # dl.download_course_by_class_id(189505397)
-
 
 def main():
     dl = Skillshare(cookie)
@@ -14,6 +12,9 @@ def main():
 
 
 def info():
-    if __name__ == "__main__":
-        info()
-        main()
+    print(r"""""")
+
+
+if __name__ == "__main__":
+    info()
+    main()

@@ -1,10 +1,5 @@
-import requests
-import json
-import sys
-import re
-import os
+import requests, json, sys, re, os
 from slugify import slugify
-
 
 class Skillshare(object):
 
@@ -46,8 +41,7 @@ class Skillshare(object):
         title = data['title']
         if self.is_unicode_string(title):
             title = title.encode('ascii', 'replace')
-        base_path = os.path.abspath(os.path.join(
-            self.download_path, slugify(teacher_name), slugify(title))).rstrip('/')
+        base_path = os.path.abspath(os.path.join(self.download_path, slugify(teacher_name), slugify(title))).rstrip('/')
         if not os.path.exists(base_path):
             os.makedirs(base_path)
         for u in data['_embedded']['units']['_embedded']['units']:
@@ -60,84 +54,82 @@ class Skillshare(object):
                     s_title = s['title']
                     if self.is_unicode_string(s_title):
                         s_title = s_title.encode('ascii', 'replace')
-                    file_name = '{} - {}'.format(
-                        str(s['index'] + 1).zfill(2), slugify(s_title))
-                    self.download_video(fpath='{base_path}/{session}.mp4'.format(base_path=base_path, session=file_name),
+                    file_name = '{} - {}'.format(str(s['index'] + 1).zfill(2), slugify(s_title))
+                    self.download_video(fpath='{base_path}/{session}.mp4'.format(base_path=base_path,
+                      session=file_name),
                       spath='{base_path}/{session}.vtt'.format(base_path=base_path, session=file_name),
                       video_id=video_id)
-                    print()
+                    print('')
 
     def fetch_course_data_by_class_id(self, class_id):
-        res=requests.get(url=('https://api.skillshare.com/classes/{}'.format(class_id)),
-          headers={'Accept': 'application/vnd.skillshare.class+json;,version=0.8',
-         'User-Agent': 'Skillshare/4.1.1; Android 5.1.1',
-         'Host': 'api.skillshare.com',
-         'cookie': self.cookie})
-        assert res.status_code == 200, 'Fetch error, code == {}'.format(
-            res.status_code)
+        res = requests.get(url=('https://api.skillshare.com/classes/{}'.format(class_id)),
+          headers={'Accept':'application/vnd.skillshare.class+json;,version=0.8',
+         'User-Agent':'Skillshare/4.1.1; Android 5.1.1',
+         'Host':'api.skillshare.com',
+         'cookie':self.cookie})
+        assert res.status_code == 200, 'Fetch error, code == {}'.format(res.status_code)
         return res.json()
 
     def download_video(self, fpath, spath, video_id):
-        meta_url='https://edge.api.brightcove.com/playback/v1/accounts/{account_id}/videos/{video_id}'.format(account_id=(self.brightcove_account_id),
+        meta_url = 'https://edge.api.brightcove.com/playback/v1/accounts/{account_id}/videos/{video_id}'.format(account_id=(self.brightcove_account_id),
           video_id=video_id)
-        meta_res=requests.get(meta_url,
-          headers={'Accept': 'application/json;pk={}'.format(self.pk),
-         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
-         'Origin': 'https://www.skillshare.com'})
+        meta_res = requests.get(meta_url,
+          headers={'Accept':'application/json;pk={}'.format(self.pk),
+         'User-Agent':'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
+         'Origin':'https://www.skillshare.com'})
         assert not meta_res.status_code != 200, 'Failed to fetch video meta'
-
-        # Video DL Url Find
+        
+        # Video DL
         for x in meta_res.json()['sources']:
             if 'container' in x:
                 if x['container'] == 'MP4' and 'src' in x:
-                    dl_url=x['src']
+                    dl_url = x['src']
                     break
 
-        # Subtitle DL Url Find
+        # Subtitle DL
         for x in meta_res.json()['text_tracks']:
             if 'srclang' in x and x['srclang'] == 'en':
                 sub_dl_url=x['src']
                 break
 
-        print('Downloading Video {}...'.format(fpath))
+        print('Downloading video {}...'.format(fpath))
         if os.path.exists(fpath):
             print('Video already downloaded, skipping...')
-            return
-        with open(fpath, 'wb') as (f):
-            response=requests.get(dl_url, allow_redirects=True, stream=True)
-            total_length=response.headers.get('content-length')
-            if not total_length:
-                f.write(response.content)
-            else:
-                dl=0
-                total_length=int(total_length)
-                for data in response.iter_content(chunk_size=4096):
-                    dl += len(data)
-                    f.write(data)
-                    done=int(50 * dl / total_length)
-                    sys.stdout.write('\r[%s%s]' %
-                                     ('=' * done, ' ' * (50 - done)))
-                    sys.stdout.flush()
+        else:
+            with open(fpath, 'wb') as (f):
+                response = requests.get(dl_url, allow_redirects=True, stream=True)
+                total_length = response.headers.get('content-length')
+                if not total_length:
+                    f.write(response.content)
+                else:
+                    dl = 0
+                    total_length = int(total_length)
+                    for data in response.iter_content(chunk_size=4096):
+                        dl += len(data)
+                        f.write(data)
+                        done = int(50 * dl / total_length)
+                        sys.stdout.write('\r[%s%s]' % ('=' * done, ' ' * (50 - done)))
+                        sys.stdout.flush()
 
-            print('')
+                print('')
 
         print('Downloading Subtitle {}...'.format(spath))
         if os.path.exists(spath):
             print('Subtitle already downloaded, skipping...')
-            return
-
-        with open(spath, 'wb') as (f):
-            sub_response=requests.get(sub_dl_url, stream=True)
-            sub_total_length=sub_response.headers.get('content-length')
-            if not sub_total_length:
-                f.write(sub_response.content)
-            else:
-                sub_dl=0
-                sub_total_length=int(sub_total_length)
-                for data in sub_response.iter_content(chunk_size=4096):
-                    sub_dl += len(data)
-                    f.write(data)
-                    sub_done=int(50 * sub_dl / sub_total_length)
-                    sys.stdout.write('\r[%s%s]' %
-                                     ('=' * sub_done, ' ' * (50 - sub_done)))
-                    sys.stdout.flush()
+        else:
+            with open(spath, 'wb') as (f):
+                sub_response=requests.get(sub_dl_url, stream=True)
+                sub_total_length=sub_response.headers.get('content-length')
+                if not sub_total_length:
+                    f.write(sub_response.content)
+                else:
+                    sub_dl=0
+                    sub_total_length=int(sub_total_length)
+                    for data in sub_response.iter_content(chunk_size=4096):
+                        sub_dl += len(data)
+                        f.write(data)
+                        sub_done=int(50 * sub_dl / sub_total_length)
+                        sys.stdout.write('\r[%s%s]' %
+                                         ('=' * sub_done, ' ' * (50 - sub_done)))
+                        sys.stdout.flush()
+                print('')
