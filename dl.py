@@ -8,7 +8,11 @@ from magic import cookie
 def main():
     dl = Skillshare(cookie)
     course_url = sys.argv[1]
-    dl.download_course_by_url(course_url)
+    course_urls = course_url.split(',')
+    print(course_urls)
+    for co in course_urls:
+        print(co)
+        dl.download_course_by_url(co)
 
 
 def info():

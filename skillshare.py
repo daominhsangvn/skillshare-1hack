@@ -1,4 +1,4 @@
-import requests, json, sys, re, os
+import requests, json, sys, re, os, re
 from slugify import slugify
 
 class Skillshare(object):
@@ -61,6 +61,7 @@ class Skillshare(object):
                     self.download_video(fpath='{base_path}/{session}.mp4'.format(base_path=base_path,
                       session=file_name),
                       spath='{base_path}/{session}.vtt'.format(base_path=base_path, session=file_name),
+                      srtpath='{base_path}/{session}.srt'.format(base_path=base_path, session=file_name),
                       video_id=video_id)
                     print('')
 
@@ -73,7 +74,7 @@ class Skillshare(object):
         assert res.status_code == 200, 'Fetch error, code == {}'.format(res.status_code)
         return res.json()
 
-    def download_video(self, fpath, spath, video_id):
+    def download_video(self, fpath, spath, srtpath, video_id):
         meta_url = 'https://edge.api.brightcove.com/playback/v1/accounts/{account_id}/videos/{video_id}'.format(account_id=(self.brightcove_account_id),
           video_id=video_id)
         meta_res = requests.get(meta_url,
@@ -116,8 +117,8 @@ class Skillshare(object):
 
                 print('')
 
-        print('Downloading Subtitle {}...'.format(spath))
-        if os.path.exists(spath):
+        print('Downloading Subtitle {}...'.format(srtpath))
+        if os.path.exists(srtpath):
             print('Subtitle already downloaded, skipping...')
         else:
             with open(spath, 'wb') as (f):
@@ -136,3 +137,19 @@ class Skillshare(object):
                                          ('=' * sub_done, ' ' * (50 - sub_done)))
                         sys.stdout.flush()
                 print('')
+
+            print('Convert Subtitle {}...'.format(srtpath))
+            with open(spath, 'r') as subtitle_file:
+                subtitle_data = subtitle_file.read()
+                subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
+                subtitle_data = re.sub(r"X-TIMESTAMP-MAP.*\n", "", subtitle_data)
+                subtitle_data = re.sub(r"(\d\d):(\d\d).(\d+)", r"00:\1:\2,\3", subtitle_data)
+                sub_lines = re.findall(r"00.*", subtitle_data)
+                li = 1
+                for l in sub_lines:
+                    subtitle_data = subtitle_data.replace(l, str(li) + "\n" + l)
+                    li = li + 1
+                sf = open(srtpath, "w")
+                sf.write(subtitle_data)
+                sf.close()
+            os.remove(spath)
