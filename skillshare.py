@@ -83,6 +83,8 @@ class Skillshare(object):
          'Origin':'https://www.skillshare.com'})
         assert not meta_res.status_code != 200, 'Failed to fetch video meta'
 
+        sub_dl_url = None
+
         # Video DL
         for x in meta_res.json()['sources']:
             if 'container' in x:
@@ -117,39 +119,40 @@ class Skillshare(object):
 
                 print('')
 
-        print('Downloading Subtitle {}...'.format(srtpath))
-        if os.path.exists(srtpath):
-            print('Subtitle already downloaded, skipping...')
-        else:
-            with open(spath, 'wb') as (f):
-                sub_response=requests.get(sub_dl_url, stream=True)
-                sub_total_length=sub_response.headers.get('content-length')
-                if not sub_total_length:
-                    f.write(sub_response.content)
-                else:
-                    sub_dl=0
-                    sub_total_length=int(sub_total_length)
-                    for data in sub_response.iter_content(chunk_size=4096):
-                        sub_dl += len(data)
-                        f.write(data)
-                        sub_done=int(50 * sub_dl / sub_total_length)
-                        sys.stdout.write('\r[%s%s]' %
-                                         ('=' * sub_done, ' ' * (50 - sub_done)))
-                        sys.stdout.flush()
-                print('')
+        if bool(sub_dl_url):
+            print('Downloading Subtitle {}...'.format(srtpath))
+            if os.path.exists(srtpath):
+                print('Subtitle already downloaded, skipping...')
+            else:
+                with open(spath, 'wb') as (f):
+                    sub_response=requests.get(sub_dl_url, stream=True)
+                    sub_total_length=sub_response.headers.get('content-length')
+                    if not sub_total_length:
+                        f.write(sub_response.content)
+                    else:
+                        sub_dl=0
+                        sub_total_length=int(sub_total_length)
+                        for data in sub_response.iter_content(chunk_size=4096):
+                            sub_dl += len(data)
+                            f.write(data)
+                            sub_done=int(50 * sub_dl / sub_total_length)
+                            sys.stdout.write('\r[%s%s]' %
+                                             ('=' * sub_done, ' ' * (50 - sub_done)))
+                            sys.stdout.flush()
+                    print('')
 
-            print('Convert Subtitle {}...'.format(srtpath))
-            with open(spath, 'r') as subtitle_file:
-                subtitle_data = subtitle_file.read()
-                subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
-                subtitle_data = re.sub(r"X-TIMESTAMP-MAP.*\n", "", subtitle_data)
-                subtitle_data = re.sub(r"(\d\d):(\d\d).(\d+)", r"00:\1:\2,\3", subtitle_data)
-                sub_lines = re.findall(r"00.*", subtitle_data)
-                li = 1
-                for l in sub_lines:
-                    subtitle_data = subtitle_data.replace(l, str(li) + "\n" + l)
-                    li = li + 1
-                sf = open(srtpath, "w")
-                sf.write(subtitle_data)
-                sf.close()
-            os.remove(spath)
+                print('Convert Subtitle {}...'.format(srtpath))
+                with open(spath, 'r') as subtitle_file:
+                    subtitle_data = subtitle_file.read()
+                    subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
+                    subtitle_data = re.sub(r"X-TIMESTAMP-MAP.*\n", "", subtitle_data)
+                    subtitle_data = re.sub(r"(\d\d):(\d\d).(\d+)", r"00:\1:\2,\3", subtitle_data)
+                    sub_lines = re.findall(r"00.*", subtitle_data)
+                    li = 1
+                    for l in sub_lines:
+                        subtitle_data = subtitle_data.replace(l, str(li) + "\n" + l)
+                        li = li + 1
+                    sf = open(srtpath, "w")
+                    sf.write(subtitle_data)
+                    sf.close()
+                os.remove(spath)
