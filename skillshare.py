@@ -10,6 +10,7 @@ class Skillshare(object):
         pk='BCpkADawqM2OOcM6njnM7hf9EaK6lIFlqiXB0iWjqGWUQjU7R8965xUvIQNqdQbnDTLz0IAO7E6Ir2rIbXJtFdzrGtitoee0n1XXRliD-RH9A-svuvNW9qgo3Bh34HEZjXjG4Nml4iyz3KqF',
         brightcove_account_id=3695997568001,
     ):
+        print("cookie: " + cookie)
         self.cookie = cookie.strip().strip('"')
         self.download_path = download_path
         self.pk = pk.strip()
@@ -77,82 +78,83 @@ class Skillshare(object):
     def download_video(self, fpath, spath, srtpath, video_id):
         meta_url = 'https://edge.api.brightcove.com/playback/v1/accounts/{account_id}/videos/{video_id}'.format(account_id=(self.brightcove_account_id),
           video_id=video_id)
+        print("meta_url: " + meta_url)
         meta_res = requests.get(meta_url,
           headers={'Accept':'application/json;pk={}'.format(self.pk),
          'User-Agent':'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
          'Origin':'https://www.skillshare.com'})
-        assert not meta_res.status_code != 200, 'Failed to fetch video meta'
+        
+        if(meta_res.status_code == 200):
+            sub_dl_url = None
 
-        sub_dl_url = None
+            # Video DL
+            for x in meta_res.json()['sources']:
+                if 'container' in x:
+                    if x['container'] == 'MP4' and 'src' in x:
+                        dl_url = x['src']
+                        break
 
-        # Video DL
-        for x in meta_res.json()['sources']:
-            if 'container' in x:
-                if x['container'] == 'MP4' and 'src' in x:
-                    dl_url = x['src']
+            # Subtitle DL
+            for x in meta_res.json()['text_tracks']:
+                if 'srclang' in x and x['srclang'] == 'en':
+                    sub_dl_url=x['src']
                     break
 
-        # Subtitle DL
-        for x in meta_res.json()['text_tracks']:
-            if 'srclang' in x and x['srclang'] == 'en':
-                sub_dl_url=x['src']
-                break
-
-        print('Downloading video {}...'.format(fpath))
-        if os.path.exists(fpath):
-            print('Video already downloaded, skipping...')
-        else:
-            with open(fpath, 'wb') as (f):
-                response = requests.get(dl_url, allow_redirects=True, stream=True)
-                total_length = response.headers.get('content-length')
-                if not total_length:
-                    f.write(response.content)
-                else:
-                    dl = 0
-                    total_length = int(total_length)
-                    for data in response.iter_content(chunk_size=4096):
-                        dl += len(data)
-                        f.write(data)
-                        done = int(50 * dl / total_length)
-                        sys.stdout.write('\r[%s%s]' % ('=' * done, ' ' * (50 - done)))
-                        sys.stdout.flush()
-
-                print('')
-
-        if bool(sub_dl_url):
-            print('Downloading Subtitle {}...'.format(srtpath))
-            if os.path.exists(srtpath):
-                print('Subtitle already downloaded, skipping...')
+            print('Downloading video {}...'.format(fpath))
+            if os.path.exists(fpath):
+                print('Video already downloaded, skipping...')
             else:
-                with open(spath, 'wb') as (f):
-                    sub_response=requests.get(sub_dl_url, stream=True)
-                    sub_total_length=sub_response.headers.get('content-length')
-                    if not sub_total_length:
-                        f.write(sub_response.content)
+                with open(fpath, 'wb') as (f):
+                    response = requests.get(dl_url, allow_redirects=True, stream=True)
+                    total_length = response.headers.get('content-length')
+                    if not total_length:
+                        f.write(response.content)
                     else:
-                        sub_dl=0
-                        sub_total_length=int(sub_total_length)
-                        for data in sub_response.iter_content(chunk_size=4096):
-                            sub_dl += len(data)
+                        dl = 0
+                        total_length = int(total_length)
+                        for data in response.iter_content(chunk_size=4096):
+                            dl += len(data)
                             f.write(data)
-                            sub_done=int(50 * sub_dl / sub_total_length)
-                            sys.stdout.write('\r[%s%s]' %
-                                             ('=' * sub_done, ' ' * (50 - sub_done)))
+                            done = int(50 * dl / total_length)
+                            sys.stdout.write('\r[%s%s]' % ('=' * done, ' ' * (50 - done)))
                             sys.stdout.flush()
+
                     print('')
 
-                print('Convert Subtitle {}...'.format(srtpath))
-                with open(spath, 'r') as subtitle_file:
-                    subtitle_data = subtitle_file.read()
-                    subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
-                    subtitle_data = re.sub(r"X-TIMESTAMP-MAP.*\n", "", subtitle_data)
-                    subtitle_data = re.sub(r"(\d\d):(\d\d).(\d+)", r"00:\1:\2,\3", subtitle_data)
-                    sub_lines = re.findall(r"00.*", subtitle_data)
-                    li = 1
-                    for l in sub_lines:
-                        subtitle_data = subtitle_data.replace(l, str(li) + "\n" + l)
-                        li = li + 1
-                    sf = open(srtpath, "w")
-                    sf.write(subtitle_data)
-                    sf.close()
-                os.remove(spath)
+            if bool(sub_dl_url):
+                print('Downloading Subtitle {}...'.format(srtpath))
+                if os.path.exists(srtpath):
+                    print('Subtitle already downloaded, skipping...')
+                else:
+                    with open(spath, 'wb') as (f):
+                        sub_response=requests.get(sub_dl_url, stream=True)
+                        sub_total_length=sub_response.headers.get('content-length')
+                        if not sub_total_length:
+                            f.write(sub_response.content)
+                        else:
+                            sub_dl=0
+                            sub_total_length=int(sub_total_length)
+                            for data in sub_response.iter_content(chunk_size=4096):
+                                sub_dl += len(data)
+                                f.write(data)
+                                sub_done=int(50 * sub_dl / sub_total_length)
+                                sys.stdout.write('\r[%s%s]' %
+                                                 ('=' * sub_done, ' ' * (50 - sub_done)))
+                                sys.stdout.flush()
+                        print('')
+
+                    print('Convert Subtitle {}...'.format(srtpath))
+                    with open(spath, 'r') as subtitle_file:
+                        subtitle_data = subtitle_file.read()
+                        subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
+                        subtitle_data = re.sub(r"X-TIMESTAMP-MAP.*\n", "", subtitle_data)
+                        subtitle_data = re.sub(r"(\d\d):(\d\d).(\d+)", r"00:\1:\2,\3", subtitle_data)
+                        sub_lines = re.findall(r"00.*", subtitle_data)
+                        li = 1
+                        for l in sub_lines:
+                            subtitle_data = subtitle_data.replace(l, str(li) + "\n" + l)
+                            li = li + 1
+                        sf = open(srtpath, "w")
+                        sf.write(subtitle_data)
+                        sf.close()
+                    os.remove(spath)
