@@ -7,12 +7,15 @@ from magic import cookie
 
 def main():
     dl = Skillshare(cookie)
-    course_url = sys.argv[1]
+    target_folder = sys.argv[1]
+    course_url = sys.argv[2]
     course_urls = course_url.split(',')
-    print(course_urls)
+    print("Total courses: " + str(len(course_urls)))
     for co in course_urls:
-        print(co)
-        dl.download_course_by_url(co)
+        print("Starting: " + co)
+        dl.download_course_by_url(co, target_folder)
+        print("______________________ FINISHED ______________________")
+        print("")
 
 
 def info():

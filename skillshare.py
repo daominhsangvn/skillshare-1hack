@@ -1,4 +1,4 @@
-import requests, json, sys, re, os, re
+import requests, json, sys, re, os, re, shutil
 from slugify import slugify
 
 class Skillshare(object):
@@ -10,7 +10,6 @@ class Skillshare(object):
         pk='BCpkADawqM2OOcM6njnM7hf9EaK6lIFlqiXB0iWjqGWUQjU7R8965xUvIQNqdQbnDTLz0IAO7E6Ir2rIbXJtFdzrGtitoee0n1XXRliD-RH9A-svuvNW9qgo3Bh34HEZjXjG4Nml4iyz3KqF',
         brightcove_account_id=3695997568001,
     ):
-        print("cookie: " + cookie)
         self.cookie = cookie.strip().strip('"')
         self.download_path = download_path
         self.pk = pk.strip()
@@ -24,12 +23,12 @@ class Skillshare(object):
         else:
             return False
 
-    def download_course_by_url(self, url):
+    def download_course_by_url(self, url, target_folder):
         m = re.match('https://www.skillshare.com/classes/(.*?)/(\\d+)', url)
         assert m, 'Failed to parse class ID from URL'
-        self.download_course_by_class_id(m.group(2), m.group(1))
+        self.download_course_by_class_id(m.group(2), m.group(1), target_folder)
 
-    def download_course_by_class_id(self, class_id, class_name):
+    def download_course_by_class_id(self, class_id, class_name, target_folder):
         data = self.fetch_course_data_by_class_id(class_id=class_id)
         teacher_name = None
         if 'vanity_username' in data['_embedded']['teacher']:
@@ -47,6 +46,7 @@ class Skillshare(object):
         #    title = title.encode('ascii', 'replace')
         #print(title)
         base_path = os.path.abspath(os.path.join(self.download_path, title)).rstrip('/')
+        target_path = '{target_folder}/{title}'.format(target_folder=target_folder, title=title)
         if not os.path.exists(base_path):
             os.makedirs(base_path)
         for u in data['_embedded']['units']['_embedded']['units']:
@@ -64,8 +64,14 @@ class Skillshare(object):
                       session=file_name),
                       spath='{base_path}/{session}.vtt'.format(base_path=base_path, session=file_name),
                       srtpath='{base_path}/{session}.srt'.format(base_path=base_path, session=file_name),
-                      video_id=video_id)
+                      video_id=video_id,
+                      file_name=file_name)
                     print('')
+
+        # move files to target folder
+        if os.path.exists(target_path):
+            shutil.rmtree(target_path)
+        shutil.move(base_path, target_folder)
 
     def fetch_course_data_by_class_id(self, class_id):
         res = requests.get(url=('https://api.skillshare.com/classes/{}'.format(class_id)),
@@ -76,10 +82,9 @@ class Skillshare(object):
         assert res.status_code == 200, 'Fetch error, code == {}'.format(res.status_code)
         return res.json()
 
-    def download_video(self, fpath, spath, srtpath, video_id):
+    def download_video(self, fpath, spath, srtpath, video_id, file_name):
         meta_url = 'https://edge.api.brightcove.com/playback/v1/accounts/{account_id}/videos/{video_id}'.format(account_id=(self.brightcove_account_id),
           video_id=video_id)
-        print("meta_url: " + meta_url)
         meta_res = requests.get(meta_url,
           headers={'Accept':'application/json;pk={}'.format(self.pk),
          'User-Agent':'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
@@ -101,9 +106,9 @@ class Skillshare(object):
                     sub_dl_url=x['src']
                     break
 
-            print('Downloading video {}...'.format(fpath))
+            print('* Downloading Lession ' + file_name)
             if os.path.exists(fpath):
-                print('Video already downloaded, skipping...')
+                print('>> skipping...')
             else:
                 with open(fpath, 'wb') as (f):
                     response = requests.get(dl_url, allow_redirects=True, stream=True)
@@ -119,13 +124,12 @@ class Skillshare(object):
                             done = int(50 * dl / total_length)
                             sys.stdout.write('\r[%s%s]' % ('=' * done, ' ' * (50 - done)))
                             sys.stdout.flush()
-
-                    print('')
+                        print('')
 
             if bool(sub_dl_url):
-                print('Downloading Subtitle {}...'.format(srtpath))
+                print('* Downloading Subtitle...')
                 if os.path.exists(srtpath):
-                    print('Subtitle already downloaded, skipping...')
+                    print('>> skipping...')
                 else:
                     with open(spath, 'wb') as (f):
                         sub_response=requests.get(sub_dl_url, stream=True)
@@ -142,9 +146,9 @@ class Skillshare(object):
                                 sys.stdout.write('\r[%s%s]' %
                                                  ('=' * sub_done, ' ' * (50 - sub_done)))
                                 sys.stdout.flush()
-                        print('')
+                            print('')
 
-                    print('Convert Subtitle {}...'.format(srtpath))
+                    print('* Convert Subtitle...')
                     with open(spath, 'r') as subtitle_file:
                         subtitle_data = subtitle_file.read()
                         subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
