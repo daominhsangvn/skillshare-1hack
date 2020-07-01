@@ -80,11 +80,14 @@ class Skillshare(object):
         #print(title)
         base_path = os.path.abspath(os.path.join(self.download_path, title)).rstrip('/')
         target_path = '{target_folder}/{title}'.format(target_folder=target_folder, title=title)
-        if not os.path.exists(base_path):
-            os.makedirs(base_path)
-
+        
+        # Clean up
         if os.path.exists(base_path):
             shutil.rmtree(base_path)
+            
+        # Init folder
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
         
         for u in data['_embedded']['units']['_embedded']['units']:
             for s in u['_embedded']['sessions']['_embedded']['sessions']:
@@ -108,7 +111,7 @@ class Skillshare(object):
         # move files to target folder
         if os.path.exists(target_path):
             shutil.rmtree(target_path)
-        print("> Moving files to " + target_folder)
+        print("* Moving files to " + target_folder)
         shutil.move(base_path, target_folder)
         self.update_downloaded(class_id)
 
