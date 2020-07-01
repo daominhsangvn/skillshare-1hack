@@ -36,16 +36,22 @@ class Skillshare(object):
         downloaded_history_file.write(class_id + '\n')
         downloaded_history_file.close()
 
+    def download_course_skills(self, url):
+        page_request = requests.get(url, allow_redirects=True)
+        skill_lines = re.findall(r"href\=\"\/search\?query\=(.*)\&amp.*?\"", page_request.content.decode('utf-8'))
+        return skill_lines
+
     def download_course_by_url(self, url, target_folder):
         m = re.match('https://www.skillshare.com/classes/(.*?)/(\\d+)', url)
         assert m, 'Failed to parse class ID from URL'
-        self.download_course_by_class_id(m.group(2), m.group(1), target_folder)
+        self.download_course_by_class_id(m.group(2), m.group(1), target_folder, url)
 
-    def download_course_by_class_id(self, class_id, class_name, target_folder):
+    def download_course_by_class_id(self, class_id, class_name, target_folder, url):
         is_course_downloaded = self.is_downloaded(class_id)
         if is_course_downloaded:
             print('Downloaded Already!')
             return
+        course_skills = self.download_course_skills(url)
         data = self.fetch_course_data_by_class_id(class_id=class_id)
         teacher_name = None
         if 'vanity_username' in data['_embedded']['teacher']:
@@ -58,7 +64,16 @@ class Skillshare(object):
         title = data['title']
         title = title.replace(":", "_")
         title = title.replace("|", "_")
+        # Prepend class id
         title = "("+class_id+") " + title
+
+        # Append course skills
+        skills_str = ""
+        for skill in course_skills:
+            skills_str = skills_str + "("+skill+")"
+        if len(course_skills) > 0:
+            title = title + " -- Skills" + skills_str
+
         #print(title)
         #if self.is_unicode_string(title):
         #    title = title.encode('ascii', 'replace')
