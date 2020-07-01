@@ -6,10 +6,12 @@ class Skillshare(object):
     def __init__(
         self,
         cookie,
+        downloaded_history_file_path,
         download_path=os.environ.get('FILE_PATH', './Skillshare'),
         pk='BCpkADawqM2OOcM6njnM7hf9EaK6lIFlqiXB0iWjqGWUQjU7R8965xUvIQNqdQbnDTLz0IAO7E6Ir2rIbXJtFdzrGtitoee0n1XXRliD-RH9A-svuvNW9qgo3Bh34HEZjXjG4Nml4iyz3KqF',
         brightcove_account_id=3695997568001,
     ):
+        self.downloaded_history_file_path = downloaded_history_file_path
         self.cookie = cookie.strip().strip('"')
         self.download_path = download_path
         self.pk = pk.strip()
@@ -23,12 +25,27 @@ class Skillshare(object):
         else:
             return False
 
+    def is_downloaded(self, class_id):
+        downloaded_history_file = open(self.downloaded_history_file_path, "r") 
+        downloaded_list = downloaded_history_file.readlines()
+        downloaded_history_file.close()
+        return class_id + '\n' in downloaded_list
+
+    def update_downloaded(self, class_id):
+        downloaded_history_file = open(self.downloaded_history_file_path, "a") 
+        downloaded_history_file.write(class_id + '\n')
+        downloaded_history_file.close()
+
     def download_course_by_url(self, url, target_folder):
         m = re.match('https://www.skillshare.com/classes/(.*?)/(\\d+)', url)
         assert m, 'Failed to parse class ID from URL'
         self.download_course_by_class_id(m.group(2), m.group(1), target_folder)
 
     def download_course_by_class_id(self, class_id, class_name, target_folder):
+        is_course_downloaded = self.is_downloaded(class_id)
+        if is_course_downloaded:
+            print('Downloaded Already!')
+            return
         data = self.fetch_course_data_by_class_id(class_id=class_id)
         teacher_name = None
         if 'vanity_username' in data['_embedded']['teacher']:
@@ -41,6 +58,7 @@ class Skillshare(object):
         title = data['title']
         title = title.replace(":", "_")
         title = title.replace("|", "_")
+        title = "("+class_id+") " + title
         #print(title)
         #if self.is_unicode_string(title):
         #    title = title.encode('ascii', 'replace')
@@ -72,6 +90,7 @@ class Skillshare(object):
         if os.path.exists(target_path):
             shutil.rmtree(target_path)
         shutil.move(base_path, target_folder)
+        self.update_downloaded(class_id)
 
     def fetch_course_data_by_class_id(self, class_id):
         res = requests.get(url=('https://api.skillshare.com/classes/{}'.format(class_id)),
@@ -148,7 +167,7 @@ class Skillshare(object):
                                 sys.stdout.flush()
                             print('')
 
-                    print('* Convert Subtitle...')
+                    print('* Converting Subtitle...')
                     with open(spath, 'r') as subtitle_file:
                         subtitle_data = subtitle_file.read()
                         subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
@@ -163,3 +182,4 @@ class Skillshare(object):
                         sf.write(subtitle_data)
                         sf.close()
                     os.remove(spath)
+            print('Done!')
