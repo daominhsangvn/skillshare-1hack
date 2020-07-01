@@ -41,6 +41,7 @@ class Skillshare(object):
             teacher_name = teacher_name.encode('ascii', 'replace')
         title = data['title']
         title = title.replace(":", "_")
+        title = title.replace("|", "_")
         #print(title)
         #if self.is_unicode_string(title):
         #    title = title.encode('ascii', 'replace')
@@ -148,7 +149,7 @@ class Skillshare(object):
                         subtitle_data = subtitle_file.read()
                         subtitle_data = re.sub(r"WEBVTT\n", "", subtitle_data)
                         subtitle_data = re.sub(r"X-TIMESTAMP-MAP.*\n", "", subtitle_data)
-                        subtitle_data = re.sub(r"(\d\d):(\d\d).(\d+)", r"00:\1:\2,\3", subtitle_data)
+                        subtitle_data = re.sub(r"(\d\d):(\d\d):(\d\d)\.(\d+)", r"\1:\2:\3,\4", subtitle_data)
                         sub_lines = re.findall(r"00.*", subtitle_data)
                         li = 1
                         for l in sub_lines:
