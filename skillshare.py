@@ -64,6 +64,7 @@ class Skillshare(object):
         title = data['title']
         title = title.replace(":", "_")
         title = title.replace("|", "_")
+        title = title.replace("/", " ")
         # Prepend class id
         title = "("+class_id+") " + title
 
