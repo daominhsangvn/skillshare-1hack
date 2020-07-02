@@ -111,7 +111,7 @@ class Skillshare(object):
         # move files to target folder
         if os.path.exists(target_path):
             shutil.rmtree(target_path)
-        print("* Moving files to " + target_folder)
+        print("* Moving files from " + base_path + " to " + target_folder)
         shutil.move(base_path, target_folder)
         self.update_downloaded(class_id)
 
