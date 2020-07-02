@@ -63,8 +63,8 @@ class Skillshare(object):
             teacher_name = teacher_name.encode('ascii', 'replace')
         title = data['title']
         title = title.replace(":", "_")
-        title = title.replace("|", "_")
-        title = title.replace("/", " ")
+        title = title.replace("|", "-")
+        title = title.replace("/", "-")
         # Prepend class id
         title = "("+class_id+") " + title
 
