@@ -26,7 +26,8 @@ def main():
         dl.download_course_by_url(co, target_folder)
         print("______________________ FINISHED ______________________")
         print("")
-
+    print("______________________ DONE ______________________")
+    print("")
 
 def info():
     print(r"""""")
