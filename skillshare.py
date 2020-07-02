@@ -71,6 +71,7 @@ class Skillshare(object):
         # Append course skills
         skills_str = ""
         for skill in course_skills:
+            skill = skill.replace("/", "-")
             skills_str = skills_str + "("+skill+")"
         if len(course_skills) > 0:
             title = title + " -- Skills" + skills_str
