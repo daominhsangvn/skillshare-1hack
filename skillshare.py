@@ -86,6 +86,7 @@ class Skillshare(object):
         
         if(meta_res.status_code == 200):
             sub_dl_url = None
+            dl_url = None
 
             # Video DL
             for x in meta_res.json()['sources']:
@@ -99,6 +100,10 @@ class Skillshare(object):
                 if 'srclang' in x and x['srclang'] == 'en':
                     sub_dl_url=x['src']
                     break
+
+            if not bool(dl_url):
+                print('Could not find dl_url')
+                return
 
             print('Downloading video {}...'.format(fpath))
             if os.path.exists(fpath):
