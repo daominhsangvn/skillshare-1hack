@@ -71,7 +71,7 @@ class Skillshare(object):
         # Append course skills
         skills_str = ""
         black_list_skills = ['Plugin', 'Technology', 'Web Development', 'Search Engine Optimization', 'Web', 'Forms', 'Styling', 'Home Business', 'Developer', 'Coding']
-        filtered_course_skills = filter(lambda t: t not in black_list_skills, course_skills)
+        filtered_course_skills = list(filter(lambda t: t not in black_list_skills, course_skills))
         for skill in filtered_course_skills:
             skill = skill.replace("/", "-")
             skills_str = skills_str + "("+skill+")"
